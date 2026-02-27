@@ -1,0 +1,27 @@
+# Defines the accounts you want to KEEP as legacy/Basic Auth
+$ExceptionList = @(
+    "cmpd-notifications@mazetx.onmicrosoft.com",
+    "ri-notifications@mazetx.onmicrosoft.com",
+    "srvc_print@mazetx.onmicrosoft.com"
+)
+
+# Gets all mailboxes where SMTP Auth is currently enabled (False = Enabled)
+$TargetUsers = Get-CASMailbox -ResultSize Unlimited | Where-Object { $_.SmtpClientAuthenticationDisabled -eq $false }
+
+Write-Host "Found $($TargetUsers.Count) accounts with SMTP Auth enabled." -ForegroundColor Cyan
+
+# Loops through and disable unless they are in the exception list
+foreach ($User in $TargetUsers) {
+    $UPN = $User.PrimarySmtpAddress
+   
+    if ($ExceptionList -contains $UPN) {
+        Write-Host "Skipping $UPN (Exception List)" -ForegroundColor Yellow
+    }
+    else {
+        Write-Host "Disabling Legacy SMTP Auth for $UPN..." -ForegroundColor Green
+        # Setting to $true disables the protocol (forcing Modern Auth or blocking Basic)
+        Set-CASMailbox -Identity $UPN -SmtpClientAuthenticationDisabled $true
+    }
+}
+
+Write-Host "Transition Complete." -ForegroundColor White -BackgroundColor Blue
